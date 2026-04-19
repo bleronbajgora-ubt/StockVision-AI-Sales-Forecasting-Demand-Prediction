@@ -1,0 +1,58 @@
+
+🏗️ 1. ARKITEKTURA E SISTEMIT:
+🔷 FRONTEND (React / Vite)
+Login / Register
+Dashboard
+Stock charts
+Prediction view
+Clustering visualization
+🔷 BACKEND (Spring Boot / Node / .NET)
+
+------------------------------------------------------------------------------------------------------
+👉 SPRING-BOOT:
+
+Layers:
+🟦 Controllers
+AuthController
+UserController
+StockController
+MLController
+🟩 Services
+AuthService
+UserService
+StockService
+MLService
+🟨 Repositories
+UserRepository
+RoleRepository
+StockRepository
+PredictionRepository
+--------------------------------------------------------------------------------------------------------
+🔷 DATABASE (24+ TABLES)
+🔒 Core (10 mandatory)
+Users
+Roles
+UserRoles
+Permissions
+RolePermissions
+RefreshTokens
+AuditLogs
+Notifications
+Settings
+Files
+-----------------------------------------------------------------------------------------------------------
+📊 Domain (StockVision AI)
+Stocks
+StockPrices
+Predictions
+ModelResults
+Features
+Clusters
+TradingSignals
+MarketData
+Indicators
+Portfolio
+Watchlist
+Transactions
+MLModels
+ModelMetrics
