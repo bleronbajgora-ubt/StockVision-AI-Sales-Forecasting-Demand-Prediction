@@ -9,7 +9,7 @@ Clustering visualization
 🔷 BACKEND (Spring Boot / Node / .NET)
 
 ------------------------------------------------------------------------------------------------------
-👉 SPRING-BOOT:
+👉 Python:
 
 Layers:
 🟦 Controllers
@@ -39,7 +39,7 @@ RefreshTokens
 AuditLogs
 Notifications
 Settings
-Files
+Reviews
 -----------------------------------------------------------------------------------------------------------
 📊 Domain (StockVision AI)
 Stocks
