@@ -68,3 +68,100 @@ def parse_money(x) -> float:
         return float(s)
     except ValueError:
         return np.nan
+
+def parse_count(x) -> float:
+    """Parse values like '1,07,687' or '7,298' or 7298 into float."""
+    if pd.isna(x):
+        return np.nan
+    s = str(x).strip()
+    if s == "":
+        return np.nan
+    s = re.sub(r"[^\d]", "", s)
+    if s == "":
+        return np.nan
+    try:
+        return float(s)
+    except ValueError:
+        return np.nan
+
+
+def safe_text(x) -> str:
+    """Ensure text is string; missing -> empty."""
+    if pd.isna(x):
+        return ""
+    return str(x)
+
+
+def build_text_series(df: pd.DataFrame) -> pd.Series:
+    """Concatenate title + content; improves signal vs either alone."""
+    title = df.get("review_title", pd.Series([""] * len(df))).map(safe_text)
+    content = df.get("review_content", pd.Series([""] * len(df))).map(safe_text)
+    # Feature engineering insight:
+    # - Titles often contain a dense sentiment summary ("Excellent", "Bad", "Value for money")
+    # - Content provides context and nuance; concatenating helps linear models and TF-IDF capture both.
+    return (title + " " + content).str.strip()
+
+
+----------------------------
+Data preprocessing
+----------------------------
+@st.cache_data(show_spinner=False)
+def load_raw(path: str) -> pd.DataFrame:
+    # Using low_memory=False for stable dtype inference (production-safe on medium CSVs).
+    return pd.read_csv(path, low_memory=False)
+def preprocess(df_raw: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
+    """
+    1) Remove rating==3
+    2) Binary target: rating>=4 -> 1, rating<=2 -> 0
+    3) Handle missing values (text->"", numeric->median at pipeline stage)
+    4) Normalize numeric features (done in pipeline)
+    """
+    df = df_raw.copy()
+
+    # Ensure required columns exist
+    missing_cols = [c for c in (TEXT_COLS + NUMERIC_COLS + [LABEL_COL, "category"]) if c not in df.columns]
+    if missing_cols:
+        raise ValueError(f"Missing required columns: {missing_cols}")
+
+    # Coerce rating to numeric
+    df[LABEL_COL] = pd.to_numeric(df[LABEL_COL], errors="coerce")
+    df = df.dropna(subset=[LABEL_COL])
+
+    # Remove neutral class (rating==3)
+    df = df[df[LABEL_COL] != 3].copy()
+
+    # Create binary sentiment label
+    y = (df[LABEL_COL] >= 4).astype(int)
+    # Drop any invalid ratings outside 1-5 if present
+    valid_mask = df[LABEL_COL].between(1, 5)
+    df = df[valid_mask].copy()
+    y = y.loc[df.index]
+
+    # Parse numeric columns
+    df["discounted_price"] = df["discounted_price"].map(parse_money)
+    df["actual_price"] = df["actual_price"].map(parse_money)
+    df["rating_count"] = df["rating_count"].map(parse_count)
+
+    # Text columns: fill missing
+    for c in TEXT_COLS:
+        df[c] = df[c].map(safe_text)
+
+    # Category: fill missing (not used in models here, but useful for UI summary)
+    df["category"] = df["category"].map(safe_text)
+
+    # NOTE: Numeric missing values are handled in pipeline via FunctionTransformer+np.nan_to_num after median fill.
+    return df, y
+
+
+def median_impute_numpy(X: np.ndarray) -> np.ndarray:
+    """Median impute each column; robust for heavy-tailed price/count features."""
+    X = X.astype(float)
+    X_out = X.copy()
+    for j in range(X_out.shape[1]):
+        col = X_out[:, j]
+        med = np.nanmedian(col)
+        if np.isnan(med):
+            med = 0.0
+        col = np.where(np.isnan(col), med, col)
+        X_out[:, j] = col
+    return X_out
