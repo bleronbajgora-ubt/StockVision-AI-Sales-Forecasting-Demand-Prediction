@@ -165,3 +165,74 @@ def median_impute_numpy(X: np.ndarray) -> np.ndarray:
         col = np.where(np.isnan(col), med, col)
         X_out[:, j] = col
     return X_out
+
+
+Feature pipelines
+----------------------------
+@dataclass(frozen=True)
+class FeaturizationConfig:
+    max_features: int
+    ngram_range: Tuple[int, int]
+
+
+def make_text_vectorizer(cfg: FeaturizationConfig) -> TfidfVectorizer:
+    # Production-ish defaults:
+    # - sublinear_tf helps dampen overly frequent words
+    # - min_df=2 reduces noise from one-off tokens
+    return TfidfVectorizer(
+        max_features=cfg.max_features,
+        ngram_range=cfg.ngram_range,
+        stop_words="english",
+        sublinear_tf=True,
+        min_df=2,
+        strip_accents="unicode",
+    )
+
+
+def build_features(
+    df: pd.DataFrame,
+    feature_type: str,
+    tfidf_cfg: FeaturizationConfig,
+) -> Tuple[csr_matrix, Optional[np.ndarray], TfidfVectorizer]:
+    """
+    Returns:
+      X_text: sparse TF-IDF matrix
+      X_num_scaled (dense) or None
+      fitted vectorizer
+    """
+    text = build_text_series(df)
+    vectorizer = make_text_vectorizer(tfidf_cfg)
+    X_text = vectorizer.fit_transform(text)
+
+    if feature_type == "Text only":
+        return X_text.tocsr(), None, vectorizer
+
+    # Hybrid: numeric features + TF-IDF stacking
+    X_num = df[NUMERIC_COLS].to_numpy(dtype=float)
+    X_num = median_impute_numpy(X_num)
+    scaler = StandardScaler()
+    X_num_scaled = scaler.fit_transform(X_num)
+
+    # Hybrid feature engineering insight:
+    # - TF-IDF captures linguistic sentiment cues.
+    # - Numeric signals can correlate with sentiment bias:
+    #   e.g., very low discounted_price / high rating_count might correlate with more "value-for-money" positivity.
+    X_hybrid = hstack([X_text, csr_matrix(X_num_scaled)], format="csr")
+    return X_hybrid, X_num_scaled, vectorizer
+def transform_features_for_inference(
+    df_one: pd.DataFrame,
+    feature_type: str,
+    vectorizer: TfidfVectorizer,
+    scaler: Optional[StandardScaler],
+) -> csr_matrix:
+    text = build_text_series(df_one)
+    X_text = vectorizer.transform(text)
+
+    if feature_type == "Text only":
+        return X_text.tocsr()
+
+    X_num = df_one[NUMERIC_COLS].to_numpy(dtype=float)
+    X_num = median_impute_numpy(X_num)
+    assert scaler is not None
+    X_num_scaled = scaler.transform(X_num)
+    return hstack([X_text, csr_matrix(X_num_scaled)], format="csr")
