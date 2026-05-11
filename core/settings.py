@@ -2,17 +2,6 @@
 =============================================================================
  app/core/settings.py — Application Settings
 =============================================================================
- WHY pydantic-settings:
-   Validates every environment variable at startup. If DATABASE_URL is
-   missing or SECRET_KEY is too short, the app refuses to start with a
-   clear error — far better than a cryptic crash at the first DB call.
-
- WHY a Settings class instead of os.environ.get() scattered everywhere:
-   - One place to see all configuration
-   - Type coercion (string "true" → bool True automatically)
-   - IDE autocomplete on settings.SECRET_KEY instead of magic strings
-=============================================================================
-"""
 
 from functools import lru_cache
 from pathlib import Path

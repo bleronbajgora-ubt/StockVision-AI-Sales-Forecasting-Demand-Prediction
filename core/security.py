@@ -2,11 +2,6 @@
 =============================================================================
  app/core/security.py — Authentication & Cryptography
 =============================================================================
- Password hashing   : sha256_crypt (argon2 / bcrypt on production servers)
- JWT access tokens  : signed with HS256, 30-min expiry
- Refresh tokens     : 256-bit random, SHA-256 hashed for DB storage
-=============================================================================
-"""
 
 import hashlib
 import secrets
